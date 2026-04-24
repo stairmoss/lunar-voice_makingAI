@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunar - AI Voice Cloning</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #050505;
+            --primary-color: #7b2cbf;
+            --secondary-color: #5a189a;
+            --accent-glow: #e0aaff;
+            --panel-bg: rgba(16, 16, 24, 0.55);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8f9fa;
+            --text-muted: #adb5bd;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            position: relative;
+        }
+
+        /* Space/Moon Background */
+        .background-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            overflow: hidden;
+            background: radial-gradient(circle at 80% 20%, #1a0b2e 0%, var(--bg-dark) 60%);
+        }
+
+        .moon {
+            position: absolute;
+            top: 10%; right: 15%;
+            width: 250px; height: 250px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #e0aaff 0%, #7b2cbf 60%, #10002b 100%);
+            box-shadow: 0 0 80px 20px rgba(123, 44, 191, 0.4), inset -20px -20px 40px rgba(0,0,0,0.5);
+            animation: float 10s ease-in-out infinite;
+            opacity: 0.8;
+        }
+
+        .stars {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                radial-gradient(1px 1px at 10% 20%, white, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 30% 40%, rgba(255,255,255,0.8), rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 50% 60%, white, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 70% 80%, rgba(255,255,255,0.6), rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 90% 10%, white, rgba(0,0,0,0));
+            background-size: 200px 200px;
+            animation: twinkling 15s linear infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        @keyframes twinkling {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-200px); }
+        }
+
+        /* Layout */
+        .app-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            padding: 24px 3vw;
+            gap: 32px;
+            backdrop-filter: blur(4px);
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Glassmorphism utility */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--panel-border);
+            border-radius: 28px;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+        }
+
+        /* LEFT SIDEBAR */
+        .sidebar {
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            padding: 32px;
+            flex-shrink: 0;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(224, 170, 255, 0.4), transparent);
+        }
+
+        /* BRANDING */
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 40px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .brand-icon {
+            width: 48px; height: 48px;
+            background: linear-gradient(135deg, var(--accent-glow), var(--secondary-color));
+            border-radius: 50%;
+            box-shadow: 0 0 20px var(--secondary-color);
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        
+        .brand-icon::after {
+            content: '';
+            position: absolute;
+            top: 20%; left: 20%;
+            width: 30%; height: 30%;
+            background: rgba(255,255,255,0.8);
+            border-radius: 50%;
+            filter: blur(3px);
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(to right, #fff, var(--accent-glow));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+            text-shadow: 0 0 30px rgba(224, 170, 255, 0.3);
+            line-height: 1.1;
+        }
+
+        .brand p {
+            font-size: 11px;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+
+        /* CONTROLS AREA */
+        .controls-group {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+
+        .select-wrapper {
+            position: relative;
+        }
+
+        select {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 14px;
+            font-weight: 500;
+            outline: none;
+            appearance: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 15px rgba(123, 44, 191, 0.2);
+            background: rgba(0,0,0,0.6);
+        }
+
+        select option {
+            background: #0f0f16;
+            color: #fff;
+            padding: 10px;
+        }
+
+        .select-wrapper::after {
+            content: "▼";
+            font-size: 10px;
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: var(--accent-glow);
+        }
+
+        .speed-group {
+            position: relative;
+        }
+
+        .speed-value {
+            position: absolute;
+            right: 0;
+            font-size: 12px;
+            color: var(--accent-glow);
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(0,0,0,0.5);
+            margin-top: 6px;
+            outline: none;
+            border: 1px solid var(--panel-border);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-glow);
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--primary-color);
+            transition: transform 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .voice-note {
+            display: none;
+            font-size: 11px;
+            color: #ffb703;
+            padding: 12px;
+            background: rgba(255, 183, 3, 0.1);
+            border: 1px solid rgba(255, 183, 3, 0.3);
+            border-radius: 12px;
+            line-height: 1.5;
+            margin-top: -5px;
+        }
+
+        .voice-note.show {
+            display: block;
+        }
+
+        /* MAIN RIGHT PANEL */
+        .main-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 40px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .main-panel::-webkit-scrollbar { width: 6px; }
+        .main-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+        .panel-header {
+            margin-bottom: 24px;
+        }
+        
+        .panel-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-header h2::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 20px;
+            background: var(--accent-glow);
+            border-radius: 4px;
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        /* TEXT INPUT AREA */
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        textarea {
+            width: 100%;
+            flex: 1;
+            min-height: 250px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            padding: 24px;
+            color: var(--text-main);
+            font-size: 16px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 4px 20px rgba(0,0,0,0.2);
+            margin-bottom: 24px;
+        }
+
+        textarea:focus {
+            border-color: var(--primary-color);
+            box-shadow: inset 0 4px 20px rgba(0,0,0,0.2), 0 0 20px rgba(123, 44, 191, 0.2);
+            background: rgba(0,0,0,0.4);
+        }
+        
+        textarea::placeholder {
+            color: rgba(255,255,255,0.3);
+            font-weight: 300;
+        }
+
+        /* GENERATE BUTTON */
+        .btn-generate {
+            position: relative;
+            padding: 20px 40px;
+            border: none;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(123, 44, 191, 0.4);
+            margin-bottom: 32px;
+        }
+
+        .btn-generate::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+            z-index: 1;
+        }
+
+        .btn-generate:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(123, 44, 191, 0.6);
+        }
+
+        .btn-generate:hover::before {
+            left: 100%;
+        }
+
+        .btn-generate:active {
+            transform: translateY(1px);
+            box-shadow: 0 5px 20px rgba(123, 44, 191, 0.4);
+        }
+
+        .btn-generate:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* SPINNER */
+        .spinner {
+            display: none;
+            width: 22px;
+            height: 22px;
+            border: 3px solid rgba(255,255,255,0.2);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s infinite linear;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* RESULT SECTION */
+        .result-section {
+            background: rgba(20, 20, 30, 0.6);
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            padding: 30px;
+            display: none; /* hidden until result is available */
+            flex-direction: column;
+            gap: 24px;
+            animation: fadeIn 0.5s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .result-section.show {
+            display: flex;
+        }
+
+        .result-header {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--accent-glow);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 12px;
+        }
+
+        .translation-block {
+            display: none;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 3px solid var(--secondary-color);
+        }
+
+        .translation-block.show {
+            display: block;
+        }
+
+        .translation-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .translation-text {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #fff;
+        }
+
+        /* AUDIO PLAYER */
+        .audio-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        audio {
+            width: 100%;
+            height: 48px;
+            outline: none;
+            border-radius: 12px;
+        }
+        
+        audio::-webkit-media-controls-panel {
+            background-color: var(--secondary-color);
+            border-radius: 12px;
+        }
+        audio::-webkit-media-controls-play-button,
+        audio::-webkit-media-controls-mute-button {
+            filter: brightness(0) invert(1);
+        }
+        audio::-webkit-media-controls-current-time-display,
+        audio::-webkit-media-controls-time-remaining-display {
+            color: #fff;
+            font-family: 'Poppins', sans-serif;
+            font-size: 13px;
+        }
+
+        .audio-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* WAVEFORM */
+        .waveform {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            height: 40px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            padding: 0 16px;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+        }
+
+        .waveform.playing { opacity: 1; }
+
+        .waveform .bar {
+            width: 4px;
+            background: var(--accent-glow);
+            border-radius: 2px;
+            height: 6px; 
+            transition: height 0.1s ease;
+        }
+        
+        .waveform.playing .bar {
+            animation: soundWave 1.2s ease-in-out infinite;
+        }
+
+        .waveform .bar:nth-child(1) { animation-delay: 0.0s; }
+        .waveform .bar:nth-child(2) { animation-delay: 0.2s; }
+        .waveform .bar:nth-child(3) { animation-delay: 0.4s; }
+        .waveform .bar:nth-child(4) { animation-delay: 0.6s; }
+        .waveform .bar:nth-child(5) { animation-delay: 0.8s; }
+        .waveform .bar:nth-child(6) { animation-delay: 1.0s; }
+        .waveform .bar:nth-child(7) { animation-delay: 0.5s; }
+        .waveform .bar:nth-child(8) { animation-delay: 0.3s; }
+        .waveform .bar:nth-child(9) { animation-delay: 0.7s; }
+        .waveform .bar:nth-child(10) { animation-delay: 0.1s; }
+        .waveform .bar:nth-child(11) { animation-delay: 0.4s; }
+        .waveform .bar:nth-child(12) { animation-delay: 0.9s; }
+        .waveform .bar:nth-child(13) { animation-delay: 0.2s; }
+        .waveform .bar:nth-child(14) { animation-delay: 0.6s; }
+
+        @keyframes soundWave {
+            0%, 100% { height: 6px; box-shadow: none; }
+            50% { height: 32px; box-shadow: 0 0 10px var(--accent-glow); background: #fff; }
+        }
+
+        /* DOWNLOAD BUTTON */
+        .btn-download {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            background: rgba(123, 44, 191, 0.15);
+            border: 1px solid rgba(123, 44, 191, 0.4);
+            border-radius: 12px;
+            color: var(--accent-glow);
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-download:hover {
+            background: var(--primary-color);
+            color: #fff;
+            border-color: var(--primary-color);
+            box-shadow: 0 5px 15px rgba(123, 44, 191, 0.3);
+        }
+
+        /* ERROR MSG */
+        .error-msg {
+            background: rgba(255, 77, 77, 0.1);
+            border: 1px solid rgba(255, 77, 77, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            color: #ff6b6b;
+            font-size: 14px;
+            display: none;
+            margin-bottom: 24px;
+        }
+        .error-msg.show { display: block; animation: fadeIn 0.3s ease; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    </style>
+</head>
+<body>
+
+    <!-- Space Background -->
+    <div class="background-layer">
+        <div class="stars"></div>
+        <div class="moon"></div>
+    </div>
+
+    <div class="app-container">
+        
+        <!-- LEFT SIDEBAR: CONTROLS -->
+        <div class="sidebar glass-panel">
+            <div class="brand">
+                <div class="brand-icon"></div>
+                <div class="brand-text">
+                    <h1>Lunar</h1>
+                    <p>Voice Synthesis Studio</p>
+                </div>
+            </div>
+
+            <div class="controls-group">
+                <div class="input-group">
+                    <label for="language-select">Target Language</label>
+                    <div class="select-wrapper">
+                        <select id="language-select">
+                            {% for lang in languages %}
+                            <option value="{{ lang }}" {% if lang == 'English' %}selected{% endif %}>{{ lang }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="voice-select">Neural Voice</label>
+                    <div class="select-wrapper">
+                        <select id="voice-select">
+                            {% for voice in voices %}
+                            <option value="{{ voice }}">{{ voice }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="model-select">AI Engine</label>
+                    <div class="select-wrapper">
+                        <select id="model-select">
+                            {% for model in models %}
+                            <option value="{{ model }}">{{ model }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group speed-group">
+                    <label for="speed-slider">Timeline Speed <span class="speed-value" id="speed-display">1.0x</span></label>
+                    <input type="range" id="speed-slider" min="0.5" max="2.0" step="0.1" value="1.0">
+                </div>
+
+                <div class="voice-note" id="voice-note">
+                    ⚠️ Note: Specific voice selection is optimized for English interactions.
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT MAIN PANEL: INPUT & GENERATION -->
+        <div class="main-panel glass-panel">
+            <div class="panel-header">
+                <h2>Text Payload</h2>
+            </div>
+            
+            <div class="input-section">
+                <textarea id="text-input" placeholder="Type the script you want synthesized into audio..."></textarea>
+                
+                <div class="error-msg" id="error-msg"></div>
+
+                <button id="generate-btn" class="btn-generate">
+                    <div class="btn-content" id="btn-content">
+                        <span class="spinner" id="spinner"></span> 
+                        <span id="btn-text">Generate Voice</span>
+                    </div>
+                </button>
+            </div>
+
+            <!-- RESULT SECTION (Single output layout) -->
+            <div class="result-section" id="result-section">
+                <div class="result-header">
+                    <span>Generated Transmission</span>
+                    <span id="result-voice-label" style="color:var(--text-muted); font-size: 13px; font-weight: normal;"></span>
+                </div>
+
+                <div class="translation-block" id="translation-block">
+                    <div class="translation-label" id="translation-label">Translated to Malayalam</div>
+                    <div class="translation-text" id="translated-text"></div>
+                </div>
+
+                <div class="audio-container">
+                    <audio id="audio-player" controls></audio>
+                    
+                    <div class="audio-actions">
+                        <div class="waveform" id="waveform">
+                            <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                            <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                            <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                            <div class="bar"></div><div class="bar"></div>
+                        </div>
+
+                        <a id="download-btn" href="#" download class="btn-download">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            Download Audio
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const speedSlider = document.getElementById('speed-slider');
+        const speedDisplay = document.getElementById('speed-display');
+        const languageSelect = document.getElementById('language-select');
+        const voiceNote = document.getElementById('voice-note');
+        
+        const generateBtn = document.getElementById('generate-btn');
+        const btnText = document.getElementById('btn-text');
+        const spinner = document.getElementById('spinner');
+        const errorMsg = document.getElementById('error-msg');
+        const textInputEl = document.getElementById('text-input');
+
+        // Results elements
+        const resultSection = document.getElementById('result-section');
+        const resultVoiceLabel = document.getElementById('result-voice-label');
+        const translationBlock = document.getElementById('translation-block');
+        const translatedText = document.getElementById('translated-text');
+        const translationLabel = document.getElementById('translation-label');
+        const audioPlayer = document.getElementById('audio-player');
+        const downloadBtn = document.getElementById('download-btn');
+        const waveform = document.getElementById('waveform');
+
+        // Setup Controls
+        speedSlider.addEventListener('input', () => {
+            speedDisplay.textContent = parseFloat(speedSlider.value).toFixed(1) + 'x';
+        });
+
+        languageSelect.addEventListener('change', () => {
+            if (languageSelect.value !== 'English') {
+                voiceNote.classList.add('show');
+            } else {
+                voiceNote.classList.remove('show');
+            }
+        });
+
+        // Audio Waveform logic
+        audioPlayer.addEventListener('play', () => waveform.classList.add('playing'));
+        audioPlayer.addEventListener('pause', () => waveform.classList.remove('playing'));
+        audioPlayer.addEventListener('ended', () => waveform.classList.remove('playing'));
+
+        // Generate Logic
+        generateBtn.addEventListener('click', async () => {
+            const text = textInputEl.value.trim();
+            const voice = document.getElementById('voice-select').value;
+            const model = document.getElementById('model-select').value;
+            const language = languageSelect.value;
+            const speed = parseFloat(speedSlider.value);
+
+            errorMsg.classList.remove('show');
+            resultSection.classList.remove('show');
+
+            if (!text) {
+                errorMsg.textContent = 'Please enter text payload to synthesize.';
+                errorMsg.classList.add('show');
+                return;
+            }
+
+            // Loading state
+            generateBtn.disabled = true;
+            spinner.style.display = 'inline-block';
+            btnText.textContent = 'Generating Voice...';
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, voice, model, speed, language })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Voice generation sequence failed.');
+                }
+
+                // Update UI with results
+                resultVoiceLabel.textContent = `Voice: ${voice} | Lang: ${language}`;
+
+                if (language !== 'English' && data.translated_text) {
+                    translationLabel.textContent = `Translated to ${language}`;
+                    translatedText.textContent = data.translated_text;
+                    translationBlock.classList.add('show');
+                } else {
+                    translationBlock.classList.remove('show');
+                }
+
+                audioPlayer.src = data.audio_url;
+                downloadBtn.href = data.download_url;
+                
+                // Expose result section
+                resultSection.classList.add('show');
+
+                // Smooth scroll to results
+                resultSection.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+                // Auto-play
+                audioPlayer.play().catch(e => console.warn("Autoplay prevented:", e));
+
+            } catch (err) {
+                errorMsg.textContent = err.message;
+                errorMsg.classList.add('show');
+            } finally {
+                generateBtn.disabled = false;
+                spinner.style.display = 'none';
+                btnText.textContent = 'Generate Voice';
+            }
+        });
+
+        // Ctrl+Enter support
+        textInputEl.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                generateBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>
