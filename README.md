@@ -23,3 +23,5 @@ lunar-voice_makingAI/
 ├── templates/          # HTML templates for the web UI
 ├── requirements.txt    # Python dependencies
 └── .gitignore          # Files to exclude from Git
+```
+## pls star
